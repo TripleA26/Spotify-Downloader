@@ -1,11 +1,12 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QTextEdit,
-    QFileDialog, QTabWidget, QScrollArea, QProgressBar
+    QFileDialog, QTabWidget, QScrollArea, QProgressBar, QCheckBox, QMessageBox
 )
 from PyQt6.QtCore import pyqtSignal, QObject
 from datetime import datetime
 from downloader import SpotifyDownloader  # import downloader logic
 from utils import get_styles, get_tab_styles, get_help_text
+import ffmpeg_manager
 
 
 class Logger(QObject):
@@ -31,13 +32,47 @@ class SpotifyDownloaderUI(QWidget):
 
         config_tab = QWidget()
         config_layout = QVBoxLayout()
+
         self.client_id_input = self.create_input(config_layout, "CLIENT_ID:")
         self.client_secret_input = self.create_input(config_layout, "CLIENT_SECRET:", echo_mode=QLineEdit.EchoMode.Password)
         self.market_input = self.create_input(config_layout, "MARKET:", "ES")
-        self.ffmpeg_path_input = self.create_input(config_layout, "FFMPEG_PATH:")
-        ffmpeg_btn = QPushButton("Select FFMPEG")
-        ffmpeg_btn.clicked.connect(self.select_ffmpeg_path)
-        config_layout.addWidget(ffmpeg_btn)
+
+        # Create ffmpeg input widgets inside a container widget
+        self.ffmpeg_path_input = QLineEdit()
+        self.ffmpeg_container = QWidget()
+        ffmpeg_container_layout = QVBoxLayout()
+        ffmpeg_container_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.ffmpeg_label = QLabel("FFMPEG_PATH:")
+        self.ffmpeg_label.setStyleSheet("font-weight: bold;")
+        ffmpeg_container_layout.addWidget(self.ffmpeg_label)
+        ffmpeg_container_layout.addWidget(self.ffmpeg_path_input)
+        self.ffmpeg_select_btn = QPushButton("Select FFMPEG")
+        self.ffmpeg_select_btn.clicked.connect(self.select_ffmpeg_path)
+        ffmpeg_container_layout.addWidget(self.ffmpeg_select_btn)
+        self.ffmpeg_container.setLayout(ffmpeg_container_layout)
+        config_layout.addWidget(self.ffmpeg_container)
+
+        # Checkbox to toggle use of bundled ffmpeg
+        self.use_bundled_ffmpeg_checkbox = QCheckBox("Use internal ffmpeg (bin/ffmpeg)")
+        self.use_bundled_ffmpeg_checkbox.setChecked(True)
+        config_layout.addWidget(self.use_bundled_ffmpeg_checkbox)
+
+        # Connect checkbox toggle to show/hide ffmpeg widgets individually
+        def toggle_ffmpeg_widgets(checked):
+            visible = not checked
+            self.ffmpeg_label.setVisible(visible)
+            self.ffmpeg_path_input.setVisible(visible)
+            self.ffmpeg_select_btn.setVisible(visible)
+
+        self.use_bundled_ffmpeg_checkbox.toggled.connect(toggle_ffmpeg_widgets)
+        # Initialize visibility properly based on initial checkbox state
+        toggle_ffmpeg_widgets(self.use_bundled_ffmpeg_checkbox.isChecked())
+
+        check_ffmpeg_btn = QPushButton("Verify / Download ffmpeg")
+        check_ffmpeg_btn.clicked.connect(self.check_or_download_ffmpeg)
+        config_layout.addWidget(check_ffmpeg_btn)
+
         config_tab.setLayout(config_layout)
 
         download_tab = QWidget()
@@ -83,7 +118,7 @@ class SpotifyDownloaderUI(QWidget):
 
     def create_input(self, layout, label_text, default_value="", echo_mode=QLineEdit.EchoMode.Normal):
         label = QLabel(label_text)
-        label.setStyleSheet("font-weight: bold;")
+        label.setStyleSheet("font-weight: bold; margin-top: 8px; margin-bottom: 2px;")
         layout.addWidget(label)
         line_edit = QLineEdit()
         line_edit.setText(default_value)
@@ -103,20 +138,22 @@ class SpotifyDownloaderUI(QWidget):
             self.ffmpeg_path_input.setText(path)
 
     def start_download(self):
-        # Show progress bar
+        playlist_url = self.playlist_link_input.text().strip()
+        if not playlist_url:
+            QMessageBox.warning(self, "Input Error", "Please enter a valid Playlist URL before starting the download.")
+            return  # Stop here, don't start download
+
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
 
-        # Read config from UI
         config = {
             "client_id": self.client_id_input.text().strip(),
             "client_secret": self.client_secret_input.text().strip(),
-            "playlist_url": self.playlist_link_input.text().strip(),
+            "playlist_url": playlist_url,
             "market": self.market_input.text().strip(),
             "ffmpeg_path": self.ffmpeg_path_input.text().strip(),
         }
 
-        # Start download in separate thread
         self.downloader.start_download(config, self.update_progress, self.download_finished)
 
     def update_progress(self, completed, total):
@@ -127,3 +164,16 @@ class SpotifyDownloaderUI(QWidget):
     def download_finished(self):
         self.append_log("[Finish] Playlist download completed.", "#00ffaa")
         self.progress_bar.setVisible(False)
+
+    def check_or_download_ffmpeg(self):
+        if ffmpeg_manager.is_ffmpeg_downloaded():
+            QMessageBox.information(self, "FFmpeg", f"FFmpeg is already downloaded at:\n{ffmpeg_manager.get_ffmpeg_path()}")
+            self.append_log(f"[FFmpeg] Already downloaded at:\n{ffmpeg_manager.get_ffmpeg_path()}", "#ffca4e")
+        else:
+            self.append_log("[FFmpeg] Not found. Downloading...", "#ffca4e")
+            success = ffmpeg_manager.download_ffmpeg()
+            if success:
+                QMessageBox.information(self, "FFmpeg", "FFmpeg successfully downloaded.")
+                self.append_log("[FFmpeg] Successfully downloaded.", "#ffca4e")
+            else:
+                QMessageBox.warning(self, "FFmpeg", "Could not download ffmpeg automatically. Install it manually.")
