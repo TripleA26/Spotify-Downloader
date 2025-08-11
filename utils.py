@@ -62,7 +62,6 @@ def get_tab_styles():
     }
     """
 
-
 def get_help_text():
     return """
 How to get Spotify Client ID and Client Secret:
@@ -75,11 +74,20 @@ How to get Spotify Client ID and Client Secret:
    - Client Secret
 6. Paste these values in the Configuration tab.
 
-How to download FFMPEG:
+Playlist URL:
+- Enter the Spotify playlist URL you want to download in the Downloads tab.
+- Make sure to enter a valid URL before starting the download.
+
+FFMPEG Configuration:
+- By default, the app uses the internal bundled ffmpeg (bin/ffmpeg).
+- To use a custom ffmpeg executable, uncheck "Use internal ffmpeg" in the Configuration tab.
+- Then select your ffmpeg executable path using the 'Select FFMPEG' button.
+
+How to download FFMPEG manually:
 1. Visit https://ffmpeg.org/download.html
 2. Download the static build for your OS.
 3. Extract it to a known folder.
-4. Inside 'bin', find ffmpeg.exe.
+4. Inside the 'bin' folder, locate ffmpeg.exe (or just ffmpeg on Linux/macOS).
 
 Adding FFMPEG to PATH (Windows):
 1. Copy the path of the 'bin' folder (where ffmpeg.exe is located).
@@ -88,4 +96,9 @@ Adding FFMPEG to PATH (Windows):
 4. Under "System variables", select "Path" and click "Edit".
 5. Click "New" and paste the folder path.
 6. Press OK, then restart any terminal or application.
-    """
+
+Verifying or Downloading FFMPEG:
+- You can verify if ffmpeg is available or download it automatically using the "Verify / Download ffmpeg" button in the Configuration tab.
+"""
+
+
