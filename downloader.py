@@ -18,7 +18,6 @@ class SpotifyDownloader:
         self.logger.log_signal.emit(message, color)
 
     def start_download(self, config, progress_callback, finished_callback):
-        # Run the download_playlist in a thread so UI doesn't freeze
         thread = threading.Thread(target=self.download_playlist, args=(config, progress_callback, finished_callback), daemon=True)
         thread.start()
 
@@ -124,13 +123,19 @@ class SpotifyDownloader:
                 result = ydl.extract_info(f"ytsearch1:{query}", download=False)
                 video_info = result['entries'][0]
             video_url = video_info['url']
+
+            if ffmpeg_path and os.path.isfile(ffmpeg_path):
+                ffmpeg_location = os.path.dirname(ffmpeg_path)
+            else:
+                ffmpeg_location = None
+
             ydl_opts_download = {
                 'format': 'bestaudio/best',
                 'quiet': True,
                 'no_warnings': True,
                 'outtmpl': os.path.join(folder, '%(title)s.%(ext)s'),
                 'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '192'}],
-                'ffmpeg_location': ffmpeg_path,
+                'ffmpeg_location': ffmpeg_location,
             }
             with yt_dlp.YoutubeDL(ydl_opts_download) as ydl:
                 ydl.download([video_url])
