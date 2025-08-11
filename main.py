@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QApplication
-from test_ui import SpotifyDownloaderUI
+from ui import SpotifyDownloaderUI
 
 if __name__ == "__main__":
     import sys
@@ -7,3 +7,4 @@ if __name__ == "__main__":
     window = SpotifyDownloaderUI()
     window.show()
     sys.exit(app.exec())
+
