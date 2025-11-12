@@ -5,6 +5,13 @@ import yt_dlp
 import threading
 import time
 
+class SilentLogger:
+    def debug(self, msg):
+        pass
+    def warning(self, msg):
+        pass
+    def error(self, msg):
+        print(msg)
 
 class SpotifyDownloader:
     def __init__(self, logger):
@@ -121,8 +128,23 @@ class SpotifyDownloader:
             ydl_opts_search = {'quiet': True, 'extract_flat': True, 'default_search': 'ytsearch'}
             with yt_dlp.YoutubeDL(ydl_opts_search) as ydl:
                 result = ydl.extract_info(f"ytsearch1:{query}", download=False)
-                video_info = result['entries'][0]
-            video_url = video_info['url']
+                video_url = None
+                for entry in result['entries']:
+                    try:
+                        # Intentar usar el primer video que no genere DRM
+                        video_info_test = ydl.extract_info(entry['url'], download=False)
+                        video_url = entry['url']
+                        break
+                    except yt_dlp.utils.DownloadError as e:
+                        if "DRM protected" in str(e):
+                            self.log(f"[Skip] Video DRM protected: {entry['title']}", "yellow")
+                            continue
+                        else:
+                            raise e
+
+                if video_url is None:
+                    self.log(f"[Error] {query}: No hay videos descargables", "red")
+                    return
 
             if ffmpeg_path and os.path.isfile(ffmpeg_path):
                 ffmpeg_location = os.path.dirname(ffmpeg_path)
@@ -136,6 +158,10 @@ class SpotifyDownloader:
                 'outtmpl': os.path.join(folder, '%(title)s.%(ext)s'),
                 'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '192'}],
                 'ffmpeg_location': ffmpeg_location,
+                'noplaylist': True,
+                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'logger': yt_dlp.utils.Logger(),
+                'progress_hooks': [],
             }
             with yt_dlp.YoutubeDL(ydl_opts_download) as ydl:
                 ydl.download([video_url])
