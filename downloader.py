@@ -131,7 +131,6 @@ class SpotifyDownloader:
                 video_url = None
                 for entry in result['entries']:
                     try:
-                        # Intentar usar el primer video que no genere DRM
                         video_info_test = ydl.extract_info(entry['url'], download=False)
                         video_url = entry['url']
                         break
@@ -172,3 +171,4 @@ class SpotifyDownloader:
             with self.lock:
                 self.completed_tracks += 1
                 progress_callback(self.completed_tracks, self.total_tracks)
+
