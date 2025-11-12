@@ -127,11 +127,13 @@ class SpotifyDownloader:
             self.log(f"[Search] Looking for: {query}", "#5cb3ff")
             ydl_opts_search = {'quiet': True, 'extract_flat': True, 'default_search': 'ytsearch'}
             with yt_dlp.YoutubeDL(ydl_opts_search) as ydl:
-                result = ydl.extract_info(f"ytsearch1:{query}", download=False)
+                result = ydl.extract_info(f"ytsearch10:{query}", download=False)  # search up to 10 results
                 video_url = None
-                for entry in result['entries']:
+
+                for entry in result.get('entries', []):
                     try:
-                        video_info_test = ydl.extract_info(entry['url'], download=False)
+                        # Try to download this video
+                        ydl.extract_info(entry['url'], download=False)
                         video_url = entry['url']
                         break
                     except yt_dlp.utils.DownloadError as e:
@@ -139,10 +141,11 @@ class SpotifyDownloader:
                             self.log(f"[Skip] Video DRM protected: {entry['title']}", "yellow")
                             continue
                         else:
-                            raise e
+                            self.log(f"[Skip] Other error: {e}", "yellow")
+                            continue
 
                 if video_url is None:
-                    self.log(f"[Error] {query}: No hay videos descargables", "red")
+                    self.log(f"[Error] {query}: No downloadable videos found", "red")
                     return
 
             if ffmpeg_path and os.path.isfile(ffmpeg_path):
@@ -159,7 +162,7 @@ class SpotifyDownloader:
                 'ffmpeg_location': ffmpeg_location,
                 'noplaylist': True,
                 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'logger': yt_dlp.utils.Logger(),
+                'logger': SilentLogger(),
                 'progress_hooks': [],
             }
             with yt_dlp.YoutubeDL(ydl_opts_download) as ydl:
@@ -171,4 +174,3 @@ class SpotifyDownloader:
             with self.lock:
                 self.completed_tracks += 1
                 progress_callback(self.completed_tracks, self.total_tracks)
-
