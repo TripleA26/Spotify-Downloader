@@ -29,7 +29,7 @@ A desktop application to download Spotify playlists as MP3 files using Spotify A
 1. Clone this repository:
 
 ```bash
-git clone https://github.com/yourusername/spotify-playlist-downloader.git
+git clone https://github.com/TripleA26/Spotify-Downloader.git
 cd spotify-playlist-downloader
 ```
 
